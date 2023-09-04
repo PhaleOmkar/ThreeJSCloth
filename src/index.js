@@ -61,7 +61,7 @@ function fragmentShaderString() {
 ////////////////////////////////////////////////////////////////////////////////////////////
 function textureLoading() {
     const loader = new THREE.TextureLoader()
-    const path = require('../images/cloth.png')
+    const path = require('../images/cloth.jpg')
     const texture = loader.load(path);
 
     return(texture)
