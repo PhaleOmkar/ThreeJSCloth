@@ -1,81 +1,119 @@
-import * as THREE from 'three';
+////////////////////////////////////////////////////////////////////////////////////////////
+// imports
+////////////////////////////////////////////////////////////////////////////////////////////
+import * as THREE from 'three'
 
+////////////////////////////////////////////////////////////////////////////////////////////
+// scene and camera setup
+////////////////////////////////////////////////////////////////////////////////////////////
 const scene = new THREE.Scene()
 const perspectiveCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000)
-const renderer = new THREE.WebGLRenderer({antialias: true})
+perspectiveCamera.position.z = 6
 
+////////////////////////////////////////////////////////////////////////////////////////////
+// renderer setup
+////////////////////////////////////////////////////////////////////////////////////////////
+const renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.setPixelRatio(devicePixelRatio)
 document.body.appendChild(renderer.domElement)
 
 ////////////////////////////////////////////////////////////////////////////////////////////
+// global variables
+////////////////////////////////////////////////////////////////////////////////////////////
 var initialValue = 0
 
-const Xsegments = 50
-const Zsegments = 50
-const planeGeometry = new THREE.PlaneGeometry(2, 3, Xsegments-1, Zsegments-1) // (width, height, widthSegments, heightSegments)
-
-perspectiveCamera.position.z = 6
+const numberOfXSegments = 50
+const numberOfZSegments = 50
 
 ////////////////////////////////////////////////////////////////////////////////////////////
-const vertexShader = /*glsl*/`
-varying vec2 vUv; 
+// shader string functions
+////////////////////////////////////////////////////////////////////////////////////////////
+function vertexShaderString() {
+    const vertexShader = /*glsl*/`
+    varying vec2 vUv; 
 
-void main(void) 
-{
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    void main(void) 
+    {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`
+
+    return(vertexShader)
 }
-`;
 
-const fragmentShader = /*glsl*/`
-uniform sampler2D texture1; 
-uniform sampler2D texture2; 
-varying vec2 vUv;
+function fragmentShaderString() {
+    const fragmentShader = /*glsl*/`
+    uniform sampler2D textureSampler; 
+    varying vec2 vUv;
 
-void main(void) 
-{
-    vec4 color1 = texture2D(texture1, vUv);
-    vec4 color2 = texture2D(texture2, vUv);
-    gl_FragColor = color1;
+    void main(void) 
+    {
+        vec4 color1 = texture2D(textureSampler, vUv);
+        gl_FragColor = color1;
+    }`
+
+    return(fragmentShader)
 }
-`;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
+// texture loading function
+////////////////////////////////////////////////////////////////////////////////////////////
+function textureLoading() {
+    const loader = new THREE.TextureLoader()
+    const path = require('../images/cloth.png')
+    const texture = loader.load(path);
 
-const planeBufferGeometry= new THREE.PlaneGeometry(1, 1);
+    return(texture)
+}
+
+const clothTexture = textureLoading();
 
 ////////////////////////////////////////////////////////////////////////////////////////////
-
-const loader = new THREE.TextureLoader()
-
-const path = require('../images/cloth.png')
-const texture1 = loader.load(path);
-
+// mapping shader uniforms
+////////////////////////////////////////////////////////////////////////////////////////////
 const uniforms = {
-    texture1: { value: texture1 },
+    textureSampler: { value: clothTexture },
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////
+// mapping shader uniforms and strings to create shader material
+////////////////////////////////////////////////////////////////////////////////////////////
 const material = new THREE.ShaderMaterial({
     uniforms: uniforms,
-    vertexShader: vertexShader, 
-    fragmentShader: fragmentShader
+    vertexShader: vertexShaderString(), 
+    fragmentShader: fragmentShaderString()
 });
 
+////////////////////////////////////////////////////////////////////////////////////////////
+// creating plane geometry with shader material
+////////////////////////////////////////////////////////////////////////////////////////////
+const planeGeometry = new THREE.PlaneGeometry(2, 3, (numberOfXSegments-1), (numberOfZSegments-1)) 
 const planeMeshShader = new THREE.Mesh(planeGeometry, material)
 const {array} = planeMeshShader.geometry.attributes.position
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// applying transformations to plane geometry with shader material
+////////////////////////////////////////////////////////////////////////////////////////////
 planeMeshShader.translateY(0.0)
 planeMeshShader.rotateX(-60.0 * Math.PI / 180)
 planeMeshShader.rotateZ(-60.0 * Math.PI / 180)
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// adding plane mesh to the scene
+////////////////////////////////////////////////////////////////////////////////////////////
 scene.add(planeMeshShader)
 
+////////////////////////////////////////////////////////////////////////////////////////////
+// rendering function
+////////////////////////////////////////////////////////////////////////////////////////////
 function animate() { 
     requestAnimationFrame(animate);   
     
     var sineVal = initialValue
-    for(let z = 0; z < Zsegments; z++) {
-        for(let x = 0; x < Xsegments; x++) {
-            const index = 3 * (z * Xsegments + x);  
+    for(let z = 0; z < numberOfZSegments; z++) {
+        for(let x = 0; x < numberOfXSegments; x++) {
+            const index = 3 * (z * numberOfXSegments + x);  
             
             array[index + 2] = Math.sin(sineVal * 1.5 * Math.PI / 180)
             array[index + 2] *= 0.25
@@ -90,4 +128,7 @@ function animate() {
     renderer.render(scene, perspectiveCamera)
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+// global function call
+////////////////////////////////////////////////////////////////////////////////////////////
 animate()
